@@ -34,7 +34,7 @@ A game jam or nothing at all
 mklink /J c:\home\quicklisp\local-projects\peas-with-raylib c:\home\projects\lisp\peas-with-raylib
 ```
 
-`Bag of Peas` raylib a simple and easy-to-use library to enjoy videogames programming.
+`Bag of Peas` with raylib, a simple and easy-to-use library to enjoy videogames programming.
 
 ```lisp
 ;; load the peas
