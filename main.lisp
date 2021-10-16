@@ -32,8 +32,7 @@
            :accessor points)))
 
 
-(defun make-shape (&rest args)
-  (apply #'make-instance 'shape args))
+(define-constructor shape)
 
 
 (defmethod draw-shape ((shape shape))

@@ -1,6 +1,13 @@
 (in-package #:peas)
 
 
+(defmacro define-constructor (class)
+  (let ((*print-case* :upcase)
+        (name (intern (format nil "MAKE-~a" class))))
+    `(defun ,name (&rest args)
+       (apply #'make-instance ',class args))))
+
+
 (declaim (inline vec2))
 (defun vec2 (x y)
   (make-vector2 :x (coerce x 'single-float) :y (coerce y 'single-float)))
