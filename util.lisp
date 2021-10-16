@@ -13,6 +13,11 @@
   (make-vector2 :x (coerce x 'single-float) :y (coerce y 'single-float)))
 
 
+(declaim (inline vec3))
+(defun vec3 (x y z)
+  (make-vector3 :x (coerce x 'single-float) :y (coerce y 'single-float) :z  (coerce z 'single-float)))
+
+
 (declaim (inline x))
 (defun x (v)
   (vector2-x v))
@@ -21,6 +26,11 @@
 (declaim (inline y))
 (defun y (v)
   (vector2-y v))
+
+
+(declaim (inline z))
+(defun z (v)
+  (vector3-z v))
 
 
 (defun vector2-rotate (v angle)
