@@ -58,48 +58,89 @@
       (draw-line-3d (vec3 (- b) 0 a) (vec3 b 0 a) border-color))))
 
 
+(defun draw-grid*2 (slices spacing &key (color +lightgray+) (border-color +gray+))
+  (let ((half-slices (/ slices 2)))
+    ;; top border lines
+    (let* ((i (- half-slices))
+           (a (* i spacing))
+           (b (* half-slices spacing)))
+      (draw-line-3d (vec3 a 0 (- b)) (vec3 a 0 b) border-color)
+      (draw-line-3d (vec3 (- b) 0 a) (vec3 b 0 a) border-color))
+    ;; inner lines
+    (loop for i from (1+ (- half-slices)) to (1- half-slices)
+          do (let ((a (* i spacing))
+                   (b (* half-slices spacing)))
+               (draw-line-3d (vec3 a 0 (- b)) (vec3 a 0 b) color)
+               (draw-line-3d (vec3 (- b) 0 a) (vec3 b 0 a) color)))
+    ;; bottom border lines
+    (let* ((i half-slices)
+           (a (* i spacing))
+           (b (* half-slices spacing)))
+      (draw-line-3d (vec3 a 0 (- b)) (vec3 a 0 b) border-color)
+      (draw-line-3d (vec3 (- b) 0 a) (vec3 b 0 a) border-color))))
+
+
+(defparameter *player-x* 0)
+(defparameter *player-y* 0)
+
+
 (defun draw-all (camera)
   (with-drawing
     (clear-background +raywhite+)
     (draw-grid*-legend +board-size+ camera)
     (with-mode-3d (camera)
       (draw-grid* +board-size+ 1.0)
-      (draw-player 1 1 +board-size+)
+      (draw-player *player-x* *player-y* +board-size+)
       (draw-mine 0 0 +board-size+))
     (draw-text "Welcome to the bag of peas" 10 40 20 +darkgray+)
+    (draw-text (format nil "row: ~a" (1+ *player-x*)) 10 65 20 +darkgray+)
+    (draw-text (format nil "col: ~a" (code-char (+ (char-code #\A) *player-y*))) 10 90 20 +darkgray+)
     (draw-fps 10 10)))
 
 
-(defparameter *lixo* 0.0) ; accumulate frame-time to allow to do something at a given interval of time
+(defparameter *frames-counter-to-move* 0)
+(defparameter *frames-counter-ro-resize* 0)
 
 
 (defun handle-input ()
-  (incf *lixo* (get-frame-time))
-  (when (>= *lixo* 0.1)
-    (when (or (is-key-down +key-a+)
-              (is-key-down +key-left+))
-      (decf +board-size+))
-    (when (or (is-key-down +key-d+)
-              (is-key-down +key-right+))
-      (incf +board-size+))
-    (setf *lixo* 0.0)))
+  (let ((can-move-p (>= *frames-counter-to-move* 15))
+        (can-resize-p (>= *frames-counter-ro-resize* 15)))
+    (when (and can-move-p (is-key-down +key-a+))
+      (decf *player-y*)
+      (setf *frames-counter-to-move* 0))
+    (when (and can-move-p (is-key-down +key-d+))
+      (incf *player-y*)
+      (setf *frames-counter-to-move* 0))
+    (when (and can-move-p (is-key-down +key-w+))
+      (decf *player-x*)
+      (setf *frames-counter-to-move* 0))
+    (when (and can-move-p (is-key-down +key-s+))
+      (incf *player-x*)
+      (setf *frames-counter-to-move* 0))
+    (when (and can-resize-p (is-key-down +key-left+))
+      (decf +board-size+)
+      (setf *frames-counter-ro-resize* 0))
+    (when (and can-resize-p (is-key-down +key-right+))
+      (incf +board-size+)
+      (setf *frames-counter-ro-resize* 0))))
 
 
 (defun run ()
   (let* ((screen-width 800)
          (screen-height 600)
          (title "Bag of Peas")
-         (camera-pos (make-vector3 :x 10.0 :y 10.0 :z 10.0))
-         (camera-target (make-vector3 :x 0.0 :y 0.0 :z 0.0))
-         (camera-up (make-vector3 :x 0.0 :y 1.0 :z 0.0))
-         (camera (make-camera3d :position camera-pos
-                                :target camera-target
-                                :up camera-up
+         (camera (make-camera3d :position (vec3 5 10 10)
+                                :target (vec3 0 0 0)
+                                :up (vec3 0 1 0)
                                 :fovy 35.0
                                 :type +camera-perspective+)))
     (with-window (screen-width screen-height title)
       (set-target-fps 60)               ; Set our game to run at 60 FPS
+      (setf *frames-counter-to-move* 0)
+      (setf *frames-counter-ro-resize* 0)
       (loop
         (when (window-should-close) (return)) ; dectect window close button or ESC key
         (handle-input)
-        (draw-all camera)))))
+        (draw-all camera)
+        (incf *frames-counter-to-move*)
+        (incf *frames-counter-ro-resize*)))))
