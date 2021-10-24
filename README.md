@@ -4,13 +4,14 @@ A game jam or nothing at all
 
 ## Screenshots
 
-1. Initial status (basic shapes replicated and initial player orientation)
+1. New idea status (with some animations and player movement)
 
-![screenrec001](/etc/screenrec001.gif)
+![screenrec003](/etc/screenrec003.gif)
 
 
 ## Current status
 
+- [x] initial prototype of new idea
 - [ ] shapes
   - [ ] player
   - [ ] asteroids
@@ -49,6 +50,7 @@ Note: ensure that raylib.dll and libffi-7.dll (from msys2) are copied for sbcl r
 
 ## Ideas
 
-- [ ] starfield (parallax?)
-- [ ] the player's spaceship is fixed in the center and everything around it moves
-- [ ] mini map like a radar to see all around (or a given distance if the world is big)
+[ ] starfield (parallax?)
+[ ] the player's spaceship is fixed in the center and everything around it moves
+[ ] mini map like a radar to see all around (or a given distance if the world is big)
+[ ] the board may shrink/grow horizontally (pressing left/righ) or vertically (down/up)

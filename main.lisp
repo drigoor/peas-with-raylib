@@ -1,146 +1,175 @@
 (in-package #:peas)
 
 
-(defparameter +board-size+ 3)
+(define-class drawable-with-drawing ())
 
 
-(defun calculate-location-in-3d (line column board-size)
-  (let* ((factor (- 0.5 (/ board-size 2)))
-         (x (+ column factor))
-         (z (+ line factor)))
-    (values (vec3 x 0.5 z)          ; location of the shape in the board, in 3d
-            (vec3 x 0.0 z)))) ; location of the shadow in the board, in 3d
+(defmethod initialize-instance :after ((this drawable-with-drawing) &key game)
+  (with-slots (drawables-with-drawing) (or game this)
+    (push this drawables-with-drawing)))
 
 
-(defun draw-player (line column board-size &key (size 0.7))
-  (multiple-value-bind (shape-location shadow-location)
-      (calculate-location-in-3d line column board-size)
-    (draw-cube shape-location size size size +red+)
-    (draw-cube-wires shape-location size size size +maroon+)
-    (draw-plane shadow-location (vec2 size size) +lightgray+)))
+(define-class drawable-with-mode-3d ())
 
 
-(defun draw-mine (line column board-size &key (size 0.35))
-  (multiple-value-bind (shape-location shadow-location)
-      (calculate-location-in-3d line column board-size)
-    (draw-sphere shape-location size +darkgray+)
-    (draw-cylinder shadow-location size size 0.0 12 +lightgray+)))
+(defmethod initialize-instance :after ((this drawable-with-mode-3d) &key game)
+  (with-slots (drawables-with-mode-3d) (or game this)
+    (push this drawables-with-mode-3d)))
 
 
-(defun draw-grid*-legend (slices camera)
-  (let ((cc (char-code #\A)))
-    (dotimes (i slices)
-      (let ((line-xy (get-world-to-screen (calculate-location-in-3d i -1 slices) camera))
-            (column-xy (get-world-to-screen (calculate-location-in-3d -1 i slices) camera)))
-        (draw-text (format nil "~a" (1+ i)) (truncate (x line-xy)) (truncate (y line-xy)) 10 +gray+)
-        (draw-text (format nil "~a" (code-char (+ cc i))) (truncate (x column-xy)) (truncate (y column-xy)) 10 +gray+)))))
+(defgeneric draw (obj context &optional game)
+  (:documentation "Draws obj within context (e.g. with-drawing, or with-mode-3d)"))
 
 
-(defun draw-grid* (slices spacing &key (color +lightgray+) (border-color +gray+))
-  (let ((half-slices (/ slices 2)))
-    ;; top border lines
-    (let* ((i (- half-slices))
-           (a (* i spacing))
-           (b (* half-slices spacing)))
-      (draw-line-3d (vec3 a 0 (- b)) (vec3 a 0 b) border-color)
-      (draw-line-3d (vec3 (- b) 0 a) (vec3 b 0 a) border-color))
-    ;; inner lines
-    (loop for i from (1+ (- half-slices)) to (1- half-slices)
-          do (let ((a (* i spacing))
-                   (b (* half-slices spacing)))
-               (draw-line-3d (vec3 a 0 (- b)) (vec3 a 0 b) color)
-               (draw-line-3d (vec3 (- b) 0 a) (vec3 b 0 a) color)))
-    ;; bottom border lines
-    (let* ((i half-slices)
-           (a (* i spacing))
-           (b (* half-slices spacing)))
-      (draw-line-3d (vec3 a 0 (- b)) (vec3 a 0 b) border-color)
-      (draw-line-3d (vec3 (- b) 0 a) (vec3 b 0 a) border-color))))
+(define-class actable () frame-counter frame-counter-to-act)
 
 
-(defun draw-grid*2 (slices spacing &key (color +lightgray+) (border-color +gray+))
-  (let ((half-slices (/ slices 2)))
-    ;; top border lines
-    (let* ((i (- half-slices))
-           (a (* i spacing))
-           (b (* half-slices spacing)))
-      (draw-line-3d (vec3 a 0 (- b)) (vec3 a 0 b) border-color)
-      (draw-line-3d (vec3 (- b) 0 a) (vec3 b 0 a) border-color))
-    ;; inner lines
-    (loop for i from (1+ (- half-slices)) to (1- half-slices)
-          do (let ((a (* i spacing))
-                   (b (* half-slices spacing)))
-               (draw-line-3d (vec3 a 0 (- b)) (vec3 a 0 b) color)
-               (draw-line-3d (vec3 (- b) 0 a) (vec3 b 0 a) color)))
-    ;; bottom border lines
-    (let* ((i half-slices)
-           (a (* i spacing))
-           (b (* half-slices spacing)))
-      (draw-line-3d (vec3 a 0 (- b)) (vec3 a 0 b) border-color)
-      (draw-line-3d (vec3 (- b) 0 a) (vec3 b 0 a) border-color))))
+(defmethod initialize-instance :before ((this actable) &key ignored)
+  (declare (ignore ignored))
+  (with-slots (frame-counter frame-counter-to-act) this
+    (setf frame-counter 0)
+    (setf frame-counter-to-act 30)))
 
 
-(defparameter *player-x* 0)
-(defparameter *player-y* 0)
+(defmethod initialize-instance :after ((this actable) &key game)
+  (with-slots (actables) game
+    (push this actables)))
 
 
-(defun draw-all (camera)
-  (with-drawing
-    (clear-background +raywhite+)
-    (draw-grid*-legend +board-size+ camera)
-    (with-mode-3d (camera)
-      (draw-grid* +board-size+ 1.0)
-      (draw-player *player-x* *player-y* +board-size+)
-      (draw-mine 0 0 +board-size+))
-    (draw-text "Welcome to the bag of peas" 10 40 20 +darkgray+)
-    (draw-text (format nil "row: ~a" (1+ *player-x*)) 10 65 20 +darkgray+)
-    (draw-text (format nil "col: ~a" (code-char (+ (char-code #\A) *player-y*))) 10 90 20 +darkgray+)
-    (draw-fps 10 10)))
+(defgeneric act (obj &optional game)
+  (:documentation "Executes act method if frame-counter is above frame-counter-to-act, and it should return t to reset the frame-counter"))
 
 
-(defparameter *frames-counter-to-move* 0)
-(defparameter *frames-counter-ro-resize* 0)
+(defmethod act :around ((this actable) &optional ignored)
+  (declare (ignore ignored))
+  (with-slots (frame-counter frame-counter-to-act) this
+    (when (and (>= frame-counter frame-counter-to-act) ; can act?
+               (next-method-p))
+      (when (call-next-method)
+        (setf frame-counter 0)))
+    (incf frame-counter)))
 
 
-(defun handle-input ()
-  (let ((can-move-p (>= *frames-counter-to-move* 15))
-        (can-resize-p (>= *frames-counter-ro-resize* 15)))
-    (when (and can-move-p (is-key-down +key-a+))
-      (decf *player-y*)
-      (setf *frames-counter-to-move* 0))
-    (when (and can-move-p (is-key-down +key-d+))
-      (incf *player-y*)
-      (setf *frames-counter-to-move* 0))
-    (when (and can-move-p (is-key-down +key-w+))
-      (decf *player-x*)
-      (setf *frames-counter-to-move* 0))
-    (when (and can-move-p (is-key-down +key-s+))
-      (incf *player-x*)
-      (setf *frames-counter-to-move* 0))
-    (when (and can-resize-p (is-key-down +key-left+))
-      (decf +board-size+)
-      (setf *frames-counter-ro-resize* 0))
-    (when (and can-resize-p (is-key-down +key-right+))
-      (incf +board-size+)
-      (setf *frames-counter-ro-resize* 0))))
+(define-class entity () x y size)
+
+
+(defmethod print-object ((this entity) stream)
+  (print-unreadable-object (this stream :type t)
+    (with-slots (x y) this
+      (format stream "x: ~a y: ~a" x y))))
+
+
+(define-class player (entity actable drawable-with-mode-3d))
+(define-constructor player)
+
+
+(defmethod draw ((this player) (context (eql :with-mode-3d)) &optional game)
+  (with-slots (x y size) this
+    (with-slots (board-size) game
+      (multiple-value-bind (shape-location shadow-location)
+          (calculate-location-in-3d x y board-size)
+        (draw-cube shape-location size size size +red+)
+        (draw-cube-wires shape-location size size size +maroon+)
+        (draw-plane shadow-location (vec2 size size) +lightgray+)))))
+
+
+(defmethod act ((this player) &optional game)
+  (with-slots (x y) this
+    (with-slots (board-size) game
+      (when (and (is-key-down +key-a+)
+                 (> y 0))
+        (decf y)
+        (return-from act t))
+      (when (and (is-key-down +key-d+)
+                 (< y (1- board-size)))
+        (incf y)
+        (return-from act t))
+      (when (and (is-key-down +key-w+)
+                 (> x 0))
+        (decf x)
+        (return-from act t))
+      (when (and (is-key-down +key-s+)
+                 (< x (1- board-size)))
+        (incf x)
+        (return-from act t)))))
+
+
+(define-class mine (entity actable drawable-with-mode-3d))
+(define-constructor mine)
+
+
+(defmethod draw ((this mine) (context (eql :with-mode-3d)) &optional game)
+  (with-slots (x y size) this
+    (with-slots (board-size) game
+      (multiple-value-bind (shape-location shadow-location)
+          (calculate-location-in-3d x y board-size)
+        (draw-sphere shape-location size +darkgray+)
+        (draw-cylinder shadow-location size size 0.0 12 +lightgray+)))))
+
+
+(defmethod act ((this mine) &optional game)
+  (declare (ignore game))
+  (with-slots (y) this
+    (when (oddp y)
+      (decf y)
+      (return-from act t))
+    (when (evenp y)
+      (incf y)
+      (return-from act t))))
+
+
+(define-class game-state (drawable-with-drawing drawable-with-mode-3d)
+  actables drawables-with-drawing drawables-with-mode-3d
+  board board-size camera)
+(define-constructor game-state)
+
+
+(defmethod draw ((this game-state) (context (eql :with-drawing)) &optional ignored)
+  (declare (ignore ignored))
+  (with-slots (board-size camera) this
+    (draw-grid*-legend board-size camera)))
+
+
+(defmethod draw ((this game-state) (context (eql :with-mode-3d)) &optional ignored)
+  (declare (ignore ignored))
+  (with-slots (board-size) this
+    (draw-grid* board-size 1.0)
+    (let ((shadow-location (nth-value 1 (calculate-location-in-3d (1- board-size) (1- board-size) board-size))))
+      (draw-plane shadow-location (vec2 0.9 0.9) '(0 158 47 64))))) ; color +lime+ with transparency
+
+
+(defun init-game ()
+  (let ((game (make-game-state :board-size 3
+                               :board (make-array '(3 3))
+                               :camera (make-camera3d :position (vec3 5 10 10)
+                                                      :target (vec3 0 0 0)
+                                                      :up (vec3 0 1 0)
+                                                      :fovy 35.0
+                                                      :type +camera-perspective+))))
+    (make-player :x 0 :y 0 :size 0.7 :frame-counter-to-act 15 :game game)
+    (make-mine :x 1 :y 1 :size 0.35 :frame-counter-to-act 30 :game game)
+    (make-mine :x 2 :y 2 :size 0.15 :frame-counter-to-act 15 :game game)
+    game))
+
+
+(defun run-game (game)
+  (with-slots (actables drawables-with-drawing drawables-with-mode-3d camera) game
+    (dolist (i actables)
+      (act i game))
+    (with-drawing
+      (clear-background +raywhite+)
+      (dolist (i drawables-with-drawing)
+        (draw i :with-drawing game))
+      (with-mode-3d (camera)
+        (dolist (i drawables-with-mode-3d)
+          (draw i :with-mode-3d game))))))
 
 
 (defun run ()
-  (let* ((screen-width 800)
-         (screen-height 600)
-         (title "Bag of Peas")
-         (camera (make-camera3d :position (vec3 5 10 10)
-                                :target (vec3 0 0 0)
-                                :up (vec3 0 1 0)
-                                :fovy 35.0
-                                :type +camera-perspective+)))
-    (with-window (screen-width screen-height title)
-      (set-target-fps 60)               ; Set our game to run at 60 FPS
-      (setf *frames-counter-to-move* 0)
-      (setf *frames-counter-ro-resize* 0)
+  (with-window (800 600 "Bag of Peas")
+    (set-target-fps 60)
+    (let ((game (init-game)))
       (loop
-        (when (window-should-close) (return)) ; dectect window close button or ESC key
-        (handle-input)
-        (draw-all camera)
-        (incf *frames-counter-to-move*)
-        (incf *frames-counter-ro-resize*)))))
+        (when (window-should-close)     ; dectect window close button or ESC key
+          (return))
+        (run-game game)))))
