@@ -50,7 +50,7 @@ Note: ensure that raylib.dll and libffi-7.dll (from msys2) are copied for sbcl r
 
 ## Ideas
 
-[ ] starfield (parallax?)
-[ ] the player's spaceship is fixed in the center and everything around it moves
-[ ] mini map like a radar to see all around (or a given distance if the world is big)
-[ ] the board may shrink/grow horizontally (pressing left/righ) or vertically (down/up)
+- [ ] starfield (parallax?)
+- [ ] the player's spaceship is fixed in the center and everything around it moves
+- [ ] mini map like a radar to see all around (or a given distance if the world is big)
+- [ ] the board may shrink/grow horizontally (pressing left/righ) or vertically (down/up)
